@@ -11,10 +11,14 @@ class RX:
 
     def __init__(self, pin, **keywords):
         self.recv = Pin(pin, Pin.IN, Pin.PULL_DOWN)
-        self.baud_rate = keywords['baud_rate'] if 'baud_rate' in keywords else 2400
+        baud_rate = keywords['baud_rate'] if 'baud_rate' in keywords else 400
+        self.period = int(1_000_000 / baud_rate)
         self.parity = keywords['parity'] if 'parity' in keywords else 0
 
     def get_message(self, frame):
+        '''
+            Transform and array of tuples (time and value) to an array of ones and ceros.
+        '''
         msg = ""
         for f in frame:
             i = 0
@@ -26,6 +30,9 @@ class RX:
         return msg
 
     def get_data(self, msg):
+        '''
+            Remove preamble, start secuence and end secuence, and check that the data is 8byte compatible.
+        '''
         result = msg
         start_index = result.find(START)
         if start_index < 0:
@@ -74,11 +81,9 @@ class RX:
         while time.time() < start_time + timeout:
             value = self.recv.value()
             new_time = time.ticks_us()
-            if new_time < old_time:  # Handle overflows
-                old_time = old_time - 1_073_741_824  # microseconds overflow = 2^30
             if value != old_value:
-                diff = new_time - old_time
-                amount = diff/self.baud_rate
+                diff = time.ticks_diff(new_time, old_time)
+                amount = diff/self.period
                 rounded = round(amount)
                 deviation = abs(rounded - amount)
                 if rounded and deviation < 0.3:  # Allow for tolerance
@@ -94,7 +99,7 @@ class RX:
                 old_time = new_time
                 old_value = value
 
-            if started and new_time > old_time + self.baud_rate * 12:
+            if started and time.ticks_diff(new_time, old_time) > self.period * 12:
                 try:
                     msg = self.get_message(frame)
                     data = self.get_data(msg)

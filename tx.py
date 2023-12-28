@@ -13,7 +13,8 @@ class TX:
 
     def __init__(self, pin, **keywords):
         self.trans = Pin(pin, Pin.OUT)
-        self.baud_rate = keywords['baud_rate'] if 'baud_rate' in keywords else 2400
+        baud_rate = keywords['baud_rate'] if 'baud_rate' in keywords else 400
+        self.period = int(1_000_000 / baud_rate)
         self.parity = keywords['parity'] if 'parity' in keywords else 0
 
     def encode(self, text):
@@ -47,13 +48,11 @@ class TX:
         '''
         encoded_data = self.encode(data)
         msg = self.build(encoded_data)
-        old_time = 0
+        old_time = time.ticks_add(time.ticks_us(), -self.period)
         n = 0
         while n < len(msg):
             new_time = time.ticks_us()
-            if new_time < old_time:  # Handle overflows
-                old_time = old_time - 1_073_741_824  # microseconds overflow = 2^30
-            if new_time > old_time + self.baud_rate:
+            if time.ticks_diff(new_time, old_time) > self.period:
                 self.trans.value(msg[n])
                 n += 1
                 old_time = new_time

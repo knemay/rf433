@@ -27,7 +27,7 @@ Transmitter: copy the `tx` directory and contents to the target's filesystem. Th
         time.sleep(0.5)
 
 Named arguments:
-- baud_rate: Default is 2400. Less than that proved to be unreliable in most devices.
+- baud_rate: Default is 400. More than that proved to be unreliable in most devices.
 - parity: Default is 0. Options: `None | 0 | 1`
 
 Example: `recv = RX(23, baud_rate=3200, parity=None)`
